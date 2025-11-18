@@ -1,9 +1,6 @@
 // This is your Prisma schema file,
 // learn more about it in the docs: https://pris.ly/d/prisma-schema
 
-// Looking for ways to speed up your queries, or scale easily with your serverless or edge functions?
-// Try Prisma Accelerate: https://pris.ly/cli/accelerate-init
-
 generator client {
   provider = "prisma-client"
   output   = "../src/generated/prisma"
@@ -13,3 +10,116 @@ datasource db {
   provider = "postgresql"
   url      = env("DATABASE_URL")
 }
+
+// User model - Individual family members
+model User {
+  id            String      @id @default(cuid())
+  email         String      @unique
+  password      String
+  firstName     String
+  lastName      String
+  avatar        String?
+  role          UserRole    @default(MEMBER)
+  
+  // Relations
+  householdId   String
+  household     Household   @relation(fields: [householdId], references: [id])
+  expenses      Expense[]
+  
+  createdAt     DateTime    @default(now())
+  updatedAt     DateTime    @updatedAt
+  
+  @@index([householdId])
+  @@index([email])
+}
+
+enum UserRole {
+  ADMIN
+  MEMBER
+  CHILD
+}
+
+// Household model - Family group
+model Household {
+  id            String      @id @default(cuid())
+  name          String
+  currency      String      @default("USD")
+  
+  // Relations
+  members       User[]
+  expenses      Expense[]
+  categories    Category[]
+  budgets       Budget[]
+  
+  createdAt     DateTime    @default(now())
+  updatedAt     DateTime    @updatedAt
+}
+
+// Category model - Expense categories
+model Category {
+  id            String      @id @default(cuid())
+  name          String
+  icon          String?
+  color         String?
+  
+  // Relations
+  householdId   String
+  household     Household   @relation(fields: [householdId], references: [id])
+  expenses      Expense[]
+  budgets       Budget[]
+  
+  createdAt     DateTime    @default(now())
+  
+  @@unique([householdId, name])
+  @@index([householdId])
+}
+
+// Expense model - Individual transactions
+model Expense {
+  id            String      @id @default(cuid())
+  amount        Float
+  description   String
+  notes         String?
+  receiptUrl    String?
+  date          DateTime    @default(now())
+  
+  // Relations
+  categoryId    String
+  category      Category    @relation(fields: [categoryId], references: [id])
+  
+  userId        String
+  user          User        @relation(fields: [userId], references: [id])
+  
+  householdId   String
+  household     Household   @relation(fields: [householdId], references: [id])
+  
+  createdAt     DateTime    @default(now())
+  updatedAt     DateTime    @updatedAt
+  
+  @@index([householdId])
+  @@index([categoryId])
+  @@index([userId])
+  @@index([date])
+}
+
+// Budget model - Monthly budget limits per category
+model Budget {
+  id            String      @id @default(cuid())
+  amount        Float
+  month         DateTime
+  
+  // Relations
+  categoryId    String
+  category      Category    @relation(fields: [categoryId], references: [id])
+  
+  householdId   String
+  household     Household   @relation(fields: [householdId], references: [id])
+  
+  createdAt     DateTime    @default(now())
+  updatedAt     DateTime    @updatedAt
+  
+  @@unique([householdId, categoryId, month])
+  @@index([householdId])
+  @@index([categoryId])
+}
+
