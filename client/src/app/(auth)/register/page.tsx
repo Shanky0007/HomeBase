@@ -1,17 +1,47 @@
 "use client";
 
+import { useState } from "react";
+import { useRouter } from "next/navigation";
 import Link from "next/link";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { Home } from "lucide-react";
+import { useAuthStore } from "@/store/useAuthStore";
 
 export default function RegisterPage() {
-  const handleSubmit = (e: React.FormEvent) => {
+  const router = useRouter();
+  const { register, isLoading, error } = useAuthStore();
+  const [formData, setFormData] = useState({
+    firstName: "",
+    lastName: "",
+    email: "",
+    password: "",
+    confirmPassword: "",
+    householdName: "",
+  });
+
+  const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
-    // TODO: Implement register logic
-    console.log("Register submitted");
+    
+    if (formData.password !== formData.confirmPassword) {
+      alert("Passwords don't match!");
+      return;
+    }
+
+    try {
+      await register({
+        email: formData.email,
+        password: formData.password,
+        firstName: formData.firstName,
+        lastName: formData.lastName,
+        householdName: formData.householdName || undefined,
+      });
+      router.push("/dashboard"); // Redirect to dashboard after registration
+    } catch (error) {
+      console.error("Registration failed:", error);
+    }
   };
 
   return (
@@ -31,15 +61,34 @@ export default function RegisterPage() {
         </CardDescription>
       </CardHeader>
       <CardContent>
+        {error && (
+          <div className="mb-4 p-3 bg-destructive/10 border border-destructive/20 rounded-md text-destructive text-sm">
+            {error}
+          </div>
+        )}
         <form onSubmit={handleSubmit} className="space-y-4">
           <div className="grid grid-cols-2 gap-4">
             <div className="space-y-2">
               <Label htmlFor="firstName">First name</Label>
-              <Input id="firstName" placeholder="John" required />
+              <Input
+                id="firstName"
+                placeholder="John"
+                value={formData.firstName}
+                onChange={(e) => setFormData({ ...formData, firstName: e.target.value })}
+                required
+                disabled={isLoading}
+              />
             </div>
             <div className="space-y-2">
               <Label htmlFor="lastName">Last name</Label>
-              <Input id="lastName" placeholder="Doe" required />
+              <Input
+                id="lastName"
+                placeholder="Doe"
+                value={formData.lastName}
+                onChange={(e) => setFormData({ ...formData, lastName: e.target.value })}
+                required
+                disabled={isLoading}
+              />
             </div>
           </div>
           <div className="space-y-2">
@@ -48,16 +97,43 @@ export default function RegisterPage() {
               id="email"
               type="email"
               placeholder="name@example.com"
+              value={formData.email}
+              onChange={(e) => setFormData({ ...formData, email: e.target.value })}
               required
+              disabled={isLoading}
+            />
+          </div>
+          <div className="space-y-2">
+            <Label htmlFor="householdName">Household Name (Optional)</Label>
+            <Input
+              id="householdName"
+              placeholder="Smith Family"
+              value={formData.householdName}
+              onChange={(e) => setFormData({ ...formData, householdName: e.target.value })}
+              disabled={isLoading}
             />
           </div>
           <div className="space-y-2">
             <Label htmlFor="password">Password</Label>
-            <Input id="password" type="password" required />
+            <Input
+              id="password"
+              type="password"
+              value={formData.password}
+              onChange={(e) => setFormData({ ...formData, password: e.target.value })}
+              required
+              disabled={isLoading}
+            />
           </div>
           <div className="space-y-2">
             <Label htmlFor="confirmPassword">Confirm password</Label>
-            <Input id="confirmPassword" type="password" required />
+            <Input
+              id="confirmPassword"
+              type="password"
+              value={formData.confirmPassword}
+              onChange={(e) => setFormData({ ...formData, confirmPassword: e.target.value })}
+              required
+              disabled={isLoading}
+            />
           </div>
           <div className="flex items-center space-x-2">
             <input
@@ -80,8 +156,8 @@ export default function RegisterPage() {
               </Link>
             </label>
           </div>
-          <Button type="submit" className="w-full">
-            Create account
+          <Button type="submit" className="w-full" disabled={isLoading}>
+            {isLoading ? "Creating account..." : "Create account"}
           </Button>
         </form>
         <div className="mt-6">
