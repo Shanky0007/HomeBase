@@ -1,7 +1,9 @@
+import 'dotenv/config';
 import express, { Request, Response, NextFunction } from 'express';
 import cors from 'cors';
 import helmet from 'helmet';
 import morgan from 'morgan';
+import prisma from './lib/prisma';
 
 const app = express();
 const PORT = process.env.PORT || 5000;
@@ -14,12 +16,24 @@ app.use(express.json()); // Parse JSON bodies
 app.use(express.urlencoded({ extended: true })); // Parse URL-encoded bodies
 
 // Health check endpoint
-app.get('/health', (req: Request, res: Response) => {
-  res.status(200).json({
-    status: 'ok',
-    message: 'HomeBase API is running',
-    timestamp: new Date().toISOString(),
-  });
+app.get('/health', async (req: Request, res: Response) => {
+  try {
+    // Test database connection
+    await prisma.$queryRaw`SELECT 1`;
+    res.status(200).json({
+      status: 'ok',
+      message: 'HomeBase API is running',
+      database: 'connected',
+      timestamp: new Date().toISOString(),
+    });
+  } catch (error) {
+    res.status(503).json({
+      status: 'error',
+      message: 'HomeBase API is running',
+      database: 'disconnected',
+      timestamp: new Date().toISOString(),
+    });
+  }
 });
 
 // API routes placeholder
@@ -55,6 +69,13 @@ app.use((err: Error, req: Request, res: Response, next: NextFunction) => {
 app.listen(PORT, () => {
   console.log(`🚀 Server running on http://localhost:${PORT}`);
   console.log(`📊 Health check: http://localhost:${PORT}/health`);
+});
+
+// Graceful shutdown
+process.on('SIGINT', async () => {
+  console.log('\n🛑 Shutting down gracefully...');
+  await prisma.$disconnect();
+  process.exit(0);
 });
 
 export default app;
